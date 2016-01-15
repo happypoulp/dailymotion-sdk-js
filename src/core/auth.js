@@ -189,10 +189,44 @@ DM.provide('Auth',
                 {
                     DM.Auth._receivedSession = session;
                 }
+                else
+                {
+                    DM.Auth.handleSessionError(session)
+                }
+
                 // Remove the session from the fragment
                 window.location.hash = h.substr(0, h.lastIndexOf('#'));
             }
         }
+    },
+
+    /**
+     * Check for error in the authorization server response
+     *
+     * @access private
+     * @param session {Object}  the new Session
+     */
+    handleSessionError: function(session) {
+        var preventFurtherProcessing = false
+
+        if ('error' in session)
+        {
+            DM.error('Received auth error `' + session.error + '\': ' + session.error_description);
+        }
+
+        if (!('state' in session))
+        {
+            DM.error("Received a session with not `state' field");
+            preventFurtherProcessing = true;
+        }
+
+        if (!(session.state in DM.Auth._active))
+        {
+            DM.error('Received a session from an inactive window');
+            preventFurtherProcessing = true;
+        }
+
+        return preventFurtherProcessing
     },
 
     /**
@@ -208,20 +242,8 @@ DM.provide('Auth',
             DM.error('Received invalid session');
         }
 
-        if ('error' in session)
-        {
-            DM.error('Received auth error `' + session.error + '\': ' + session.error_description);
-        }
-
-        if (!('state' in session))
-        {
-            DM.error("Received a session with not `state' field");
-            return;
-        }
-
-        if (!(session.state in DM.Auth._active))
-        {
-            DM.error('Received a session from an inactive window');
+        var preventFurtherProcessing = DM.Auth.handleSessionError(session)
+        if (preventFurtherProcessing) {
             return;
         }
 
